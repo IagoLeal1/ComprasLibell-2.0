@@ -17,7 +17,6 @@ import {
 import { db } from "@/lib/firebase"
 import { useAuth } from "./auth-context"
 
-// ALTERAÇÃO: Adicionado "none" ao tipo de status
 export interface Product {
   id: string
   name: string
@@ -81,17 +80,24 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
+  // FUNÇÃO CORRIGIDA
   const addProduct = async (productData: NewProductData) => {
     if (!user) return
 
     try {
-      const dataForFirebase = {
+      // Começamos com os dados base que sempre existem
+      const dataForFirebase: Omit<Product, "id" | "createdAt"> & { createdAt: Timestamp } = {
         ...productData,
         userId: user.id,
         createdAt: Timestamp.now(),
-        status: "none" as const, // ALTERAÇÃO: Status padrão agora é "none"
+        status: "none" as const,
         wasPurchased: false,
-        installments: productData.paymentType === "installments" ? productData.installments || 1 : deleteField(),
+      };
+
+      // CORREÇÃO: Adicionamos o campo 'installments' APENAS se o tipo de pagamento for "installments".
+      // Se for "cash", o campo simplesmente não é incluído no objeto.
+      if (productData.paymentType === "installments") {
+        dataForFirebase.installments = productData.installments || 2;
       }
       
       const docRef = await addDoc(collection(db, "products"), dataForFirebase)
@@ -101,7 +107,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
         id: docRef.id,
         userId: user.id,
         createdAt: new Date(),
-        status: "none", // ALTERAÇÃO: Status padrão para o estado local
+        status: "none",
         wasPurchased: false,
       }
       
