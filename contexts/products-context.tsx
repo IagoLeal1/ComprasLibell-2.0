@@ -17,10 +17,11 @@ import {
 import { db } from "@/lib/firebase"
 import { useAuth } from "./auth-context"
 
+// ALTERAÇÃO: Trocamos 'category' por 'priority'
 export interface Product {
   id: string
   name: string
-  category: string
+  priority: "Baixa" | "Média" | "Alta"
   link: string
   observation: string
   value: number
@@ -80,22 +81,18 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
-  // FUNÇÃO CORRIGIDA
   const addProduct = async (productData: NewProductData) => {
     if (!user) return
 
     try {
-      // Começamos com os dados base que sempre existem
-      const dataForFirebase: Omit<Product, "id" | "createdAt"> & { createdAt: Timestamp } = {
+      const dataForFirebase: any = {
         ...productData,
         userId: user.id,
         createdAt: Timestamp.now(),
         status: "none" as const,
         wasPurchased: false,
-      };
-
-      // CORREÇÃO: Adicionamos o campo 'installments' APENAS se o tipo de pagamento for "installments".
-      // Se for "cash", o campo simplesmente não é incluído no objeto.
+      }
+      
       if (productData.paymentType === "installments") {
         dataForFirebase.installments = productData.installments || 2;
       }

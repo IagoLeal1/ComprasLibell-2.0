@@ -11,27 +11,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useProducts, type Product } from "@/contexts/products-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Package, Tag, LinkIcon, FileText, DollarSign } from "lucide-react"
+import { Package, Tag, LinkIcon, FileText, DollarSign, BarChart } from "lucide-react"
 
 interface ProductFormProps {
   product?: Product
   onClose: () => void
 }
 
-const categories = [
-  "Escritório",
-  "Limpeza",
-  "Alimentação",
-  "Tecnologia",
-  "Móveis",
-  "Equipamentos",
-  "Materiais",
-  "Outros",
-]
+// ALTERAÇÃO: Lista de prioridades
+const priorities: ("Baixa" | "Média" | "Alta")[] = ["Baixa", "Média", "Alta"]
 
 export function ProductForm({ product, onClose }: ProductFormProps) {
   const [name, setName] = useState(product?.name || "")
-  const [category, setCategory] = useState(product?.category || "")
+  // ALTERAÇÃO: State de 'category' para 'priority'
+  const [priority, setPriority] = useState<"Baixa" | "Média" | "Alta">(product?.priority || "Baixa")
   const [link, setLink] = useState(product?.link || "")
   const [observation, setObservation] = useState(product?.observation || "")
   const [value, setValue] = useState(product?.value?.toString() || "")
@@ -50,11 +43,10 @@ export function ProductForm({ product, onClose }: ProductFormProps) {
     try {
       const productData = {
         name,
-        category,
+        priority, // ALTERAÇÃO: Enviando 'priority'
         link,
         observation,
         value: Number.parseFloat(value) || 0,
-        userId: user.id,
       }
 
       if (product) {
@@ -64,6 +56,7 @@ export function ProductForm({ product, onClose }: ProductFormProps) {
           description: "O produto foi atualizado com sucesso.",
         })
       } else {
+        // @ts-ignore
         addProduct(productData)
         toast({
           title: "Produto adicionado!",
@@ -111,19 +104,20 @@ export function ProductForm({ product, onClose }: ProductFormProps) {
                 className="focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20"
               />
             </div>
+            {/* ALTERAÇÃO: Campo de Categoria para Prioridade */}
             <div className="space-y-2">
-              <Label htmlFor="category" className="flex items-center space-x-2 text-libelle-dark-blue font-medium">
-                <Tag className="h-4 w-4 text-libelle-teal" />
-                <span>Categoria *</span>
+              <Label htmlFor="priority" className="flex items-center space-x-2 text-libelle-dark-blue font-medium">
+                <BarChart className="h-4 w-4 text-libelle-teal" />
+                <span>Prioridade *</span>
               </Label>
-              <Select value={category} onValueChange={setCategory} required>
+              <Select value={priority} onValueChange={(v) => setPriority(v as "Baixa" | "Média" | "Alta")} required>
                 <SelectTrigger className="focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20">
-                  <SelectValue placeholder="Selecione uma categoria" />
+                  <SelectValue placeholder="Selecione uma prioridade" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+                  {priorities.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
                     </SelectItem>
                   ))}
                 </SelectContent>

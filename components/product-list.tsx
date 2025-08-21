@@ -27,7 +27,6 @@ interface ProductListProps {
 
 export function ProductList({ products, onEditProduct }: ProductListProps) {
   const { updateProduct, deleteProduct } = useProducts()
-  const { user } = useAuth()
   const { toast } = useToast()
 
   const handleDeleteProduct = (productId: string, productName: string) => {
@@ -42,14 +41,11 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
     updateProduct(productId, { wasPurchased: checked })
     toast({
       title: checked ? "Marcado como comprado" : "Desmarcado como comprado",
-      description: checked ? "Produto marcado como comprado." : "Produto desmarcado como comprado.",
     })
   }
   
-  // ALTERAÇÃO: Tipo atualizado para incluir "none"
   const handleStatusChange = (productId: string, status: "none" | "pending" | "approved" | "rejected") => {
     updateProduct(productId, { status })
-    // ALTERAÇÃO: Adicionado label para "none"
     const statusLabels = { none: "Sem Status", pending: "Aguardando", approved: "Aprovado", rejected: "Negado" }
     toast({
       title: "Status atualizado",
@@ -72,18 +68,14 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
     }).format(value)
   }
 
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      Escritório: "border-transparent bg-blue-50 text-blue-700 border-blue-200",
-      Limpeza: "border-transparent bg-libelle-light-green text-libelle-dark-blue",
-      Alimentação: "border-transparent bg-orange-50 text-orange-700 border-orange-200",
-      Tecnologia: "border-transparent bg-purple-50 text-purple-700 border-purple-200",
-      Móveis: "border-transparent bg-yellow-50 text-yellow-700 border-yellow-200",
-      Equipamentos: "border-transparent bg-libelle-coral/20 text-libelle-red",
-      Materiais: "border-transparent bg-gray-50 text-gray-700 border-gray-200",
-      Outros: "border-transparent bg-libelle-teal/20 text-libelle-teal",
+  // ALTERAÇÃO: Função para cores da prioridade
+  const getPriorityColor = (priority: string) => {
+    const colors = {
+      Baixa: "border-transparent bg-blue-100 text-blue-800",
+      Média: "border-transparent bg-yellow-100 text-yellow-800",
+      Alta: "border-transparent bg-red-100 text-red-800",
     }
-    return colors[category] || "border-transparent bg-gray-50 text-gray-700"
+    return colors[priority as keyof typeof colors] || "border-transparent bg-gray-100 text-gray-800"
   }
 
   if (products.length === 0) {
@@ -94,7 +86,7 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
         </div>
         <h3 className="text-xl font-semibold text-libelle-dark-blue mb-2">Nenhum produto encontrado</h3>
         <p className="text-muted-foreground max-w-sm mx-auto">
-          Adicione produtos à sua lista de compras para começar a organizar suas compras empresariais.
+          Adicione produtos à sua lista de compras para começar a organizar suas compras.
         </p>
       </div>
     )
@@ -109,7 +101,8 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
               <CheckCircle className="h-4 w-4 text-libelle-teal" />
             </TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Produto</TableHead>
-            <TableHead className="text-libelle-dark-blue font-semibold">Categoria</TableHead>
+            {/* ALTERAÇÃO: Cabeçalho de Categoria para Prioridade */}
+            <TableHead className="text-libelle-dark-blue font-semibold">Prioridade</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Status</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Pagamento</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Valor</TableHead>
@@ -132,25 +125,19 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-libelle-dark-blue">{product.name}</span>
                   {product.link && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 text-libelle-teal hover:bg-libelle-teal/10"
-                      onClick={() => window.open(product.link, "_blank")}
-                      title="Ver produto"
-                    >
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-libelle-teal hover:bg-libelle-teal/10" onClick={() => window.open(product.link, "_blank")} title="Ver produto">
                       <ExternalLink className="h-3 w-3" />
                     </Button>
                   )}
                 </div>
               </TableCell>
+              {/* ALTERAÇÃO: Célula de Categoria para Prioridade */}
               <TableCell>
-                <Badge className={getCategoryColor(product.category)} variant="secondary">
-                  {product.category}
+                <Badge className={getPriorityColor(product.priority)} variant="secondary">
+                  {product.priority}
                 </Badge>
               </TableCell>
               <TableCell>
-                {/* ALTERAÇÃO: O value padrão agora é "none" */}
                 <Select
                   value={product.status || "none"}
                   onValueChange={(value) =>
@@ -161,30 +148,17 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* ALTERAÇÃO: Adicionado o item "Sem Status" */}
                     <SelectItem value="none">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                        Sem Status
-                      </div>
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-400"></div>Sem Status</div>
                     </SelectItem>
                     <SelectItem value="pending">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                        Aguardando
-                      </div>
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-yellow-500"></div>Aguardando</div>
                     </SelectItem>
                     <SelectItem value="approved">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        Aprovado
-                      </div>
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"></div>Aprovado</div>
                     </SelectItem>
                     <SelectItem value="rejected">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                        Negado
-                      </div>
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div>Negado</div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -201,9 +175,7 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
                       }
                     }}
                   >
-                    <SelectTrigger className="w-24 h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cash">À vista</SelectItem>
                       <SelectItem value="installments">Parcelado</SelectItem>
@@ -214,15 +186,9 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
                       value={product.installments?.toString() || "2"}
                       onValueChange={(value) => handlePaymentChange(product.id, "installments", Number.parseInt(value))}
                     >
-                      <SelectTrigger className="w-24 h-7 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12].map((num) => (
-                          <SelectItem key={num} value={num.toString()}>
-                            {num}x
-                          </SelectItem>
-                        ))}
+                        {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12].map((num) => (<SelectItem key={num} value={num.toString()}>{num}x</SelectItem>))}
                       </SelectContent>
                     </Select>
                   )}
@@ -232,47 +198,27 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
                 <span className="font-semibold text-libelle-teal">{formatCurrency(product.value)}</span>
               </TableCell>
               <TableCell>
-                <span className="text-sm text-muted-foreground line-clamp-2 max-w-xs">
-                  {product.observation || "-"}
-                </span>
+                <span className="text-sm text-muted-foreground line-clamp-2 max-w-xs">{product.observation || "-"}</span>
               </TableCell>
               <TableCell>
                 <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onEditProduct(product)}
-                    className="h-8 w-8 p-0 hover:bg-libelle-teal/10 hover:text-libelle-teal"
-                    title="Editar produto"
-                  >
+                  <Button size="sm" variant="ghost" onClick={() => onEditProduct(product)} className="h-8 w-8 p-0 hover:bg-libelle-teal/10 hover:text-libelle-teal" title="Editar produto">
                     <Edit className="h-4 w-4" />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                        title="Excluir produto"
-                      >
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600" title="Excluir produto">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tem certeza que deseja remover "{product.name}" da lista? Esta ação não pode ser desfeita.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>Tem certeza que deseja remover "{product.name}" da lista? Esta ação não pode ser desfeita.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeleteProduct(product.id, product.name)}
-                          className="bg-red-500 hover:bg-red-600"
-                        >
-                          Remover
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleDeleteProduct(product.id, product.name)} className="bg-red-500 hover:bg-red-600">Remover</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

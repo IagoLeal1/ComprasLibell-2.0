@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | undefined>()
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [selectedPriority, setSelectedPriority] = useState<string>("all")
   const [sortBy, setSortBy] = useState<string>("newest")
 
   const { getProductsByUser } = useProducts()
@@ -26,17 +26,8 @@ export default function DashboardPage() {
 
   const userProducts = user ? getProductsByUser(user.id) : []
 
-  const categories = [
-    "all",
-    "Escritório",
-    "Limpeza",
-    "Alimentação",
-    "Tecnologia",
-    "Móveis",
-    "Equipamentos",
-    "Materiais",
-    "Outros",
-  ]
+  // ALTERAÇÃO: Array de prioridades para o filtro
+  const priorities = ["all", "Alta", "Média", "Baixa"]
 
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = userProducts
@@ -45,13 +36,14 @@ export default function DashboardPage() {
       filtered = filtered.filter(
         (product) =>
           product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.priority && product.priority.toLowerCase().includes(searchTerm.toLowerCase())) || // Checagem de segurança
           product.observation.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter((product) => product.category === selectedCategory)
+    // ALTERAÇÃO: Filtrando por prioridade
+    if (selectedPriority !== "all") {
+      filtered = filtered.filter((product) => product.priority === selectedPriority)
     }
 
     switch (sortBy) {
@@ -75,7 +67,7 @@ export default function DashboardPage() {
     }
 
     return filtered
-  }, [userProducts, searchTerm, selectedCategory, sortBy])
+  }, [userProducts, searchTerm, selectedPriority, sortBy])
 
   const totalValue = userProducts.reduce((sum, product) => sum + product.value, 0)
 
@@ -146,7 +138,6 @@ export default function DashboardPage() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* ALTERAÇÃO: Adicionado 'py-4' ao Card e 'px-4' ao CardHeader e CardContent */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card className="border-libelle-teal/20 shadow-sm hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm py-4">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4">
@@ -199,14 +190,15 @@ export default function DashboardPage() {
                       className="pl-10 focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20"
                     />
                   </div>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  {/* ALTERAÇÃO: Filtro de Categoria para Prioridade */}
+                  <Select value={selectedPriority} onValueChange={setSelectedPriority}>
                     <SelectTrigger className="w-full sm:w-48 border-libelle-teal/20 focus:ring-libelle-teal focus:border-libelle-teal">
-                      <SelectValue placeholder="Categoria" />
+                      <SelectValue placeholder="Prioridade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category === "all" ? "Todas as categorias" : category}
+                      {priorities.map((priority) => (
+                        <SelectItem key={priority} value={priority}>
+                          {priority === "all" ? "Todas as prioridades" : priority}
                         </SelectItem>
                       ))}
                     </SelectContent>
