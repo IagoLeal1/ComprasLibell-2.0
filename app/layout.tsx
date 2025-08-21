@@ -6,7 +6,6 @@ import { Roboto } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ProductsProvider } from "@/contexts/products-context"
-import { StockProvider } from "@/contexts/stock-context"
 import { Toaster } from "@/components/ui/toaster"
 
 const roboto = Roboto({
@@ -28,7 +27,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt-BR">
+    // A única alteração foi adicionar suppressHydrationWarning aqui
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <style>{`
 html {
@@ -42,10 +42,8 @@ html {
       <body className={`${roboto.variable} ${GeistSans.variable} ${GeistMono.variable}`}>
         <AuthProvider>
           <ProductsProvider>
-            <StockProvider>
-              {children}
-              <Toaster />
-            </StockProvider>
+            {children}
+            <Toaster />
           </ProductsProvider>
         </AuthProvider>
       </body>

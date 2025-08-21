@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useProducts, type Product } from "@/contexts/products-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Edit, Trash2, ExternalLink, Package, ShoppingCart, CheckCircle } from "lucide-react"
+import { Edit, Trash2, ExternalLink, Package, CheckCircle } from "lucide-react"
 
 interface ProductListProps {
   products: Product[]
@@ -37,19 +38,30 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
     })
   }
 
-  const handleNeedsToBuyChange = (productId: string, checked: boolean) => {
-    updateProduct(productId, { needsToBuy: checked })
-    toast({
-      title: checked ? "Marcado para comprar" : "Desmarcado para comprar",
-      description: checked ? "Produto adicionado à lista de compras." : "Produto removido da lista de compras.",
-    })
-  }
-
   const handleWasPurchasedChange = (productId: string, checked: boolean) => {
     updateProduct(productId, { wasPurchased: checked })
     toast({
       title: checked ? "Marcado como comprado" : "Desmarcado como comprado",
       description: checked ? "Produto marcado como comprado." : "Produto desmarcado como comprado.",
+    })
+  }
+  
+  // ALTERAÇÃO: Tipo atualizado para incluir "none"
+  const handleStatusChange = (productId: string, status: "none" | "pending" | "approved" | "rejected") => {
+    updateProduct(productId, { status })
+    // ALTERAÇÃO: Adicionado label para "none"
+    const statusLabels = { none: "Sem Status", pending: "Aguardando", approved: "Aprovado", rejected: "Negado" }
+    toast({
+      title: "Status atualizado",
+      description: `Produto marcado como ${statusLabels[status]}.`,
+    })
+  }
+
+  const handlePaymentChange = (productId: string, paymentType: "cash" | "installments", installments?: number) => {
+    updateProduct(productId, { paymentType, installments })
+    toast({
+      title: "Forma de pagamento atualizada",
+      description: paymentType === "cash" ? "Pagamento à vista" : `Parcelado em ${installments}x`,
     })
   }
 
@@ -94,13 +106,12 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
         <TableHeader>
           <TableRow className="bg-libelle-teal/5">
             <TableHead className="w-12">
-              <ShoppingCart className="h-4 w-4 text-libelle-teal" />
-            </TableHead>
-            <TableHead className="w-12">
               <CheckCircle className="h-4 w-4 text-libelle-teal" />
             </TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Produto</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Categoria</TableHead>
+            <TableHead className="text-libelle-dark-blue font-semibold">Status</TableHead>
+            <TableHead className="text-libelle-dark-blue font-semibold">Pagamento</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Valor</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Observação</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold w-32">Ações</TableHead>
@@ -109,14 +120,6 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
         <TableBody>
           {products.map((product) => (
             <TableRow key={product.id} className="hover:bg-libelle-teal/5 transition-colors">
-              <TableCell>
-                <Checkbox
-                  checked={product.needsToBuy || false}
-                  onCheckedChange={(checked) => handleNeedsToBuyChange(product.id, checked as boolean)}
-                  className="data-[state=checked]:bg-libelle-teal data-[state=checked]:border-libelle-teal"
-                  title="Lembrar de comprar"
-                />
-              </TableCell>
               <TableCell>
                 <Checkbox
                   checked={product.wasPurchased || false}
@@ -145,6 +148,85 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
                 <Badge className={getCategoryColor(product.category)} variant="secondary">
                   {product.category}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                {/* ALTERAÇÃO: O value padrão agora é "none" */}
+                <Select
+                  value={product.status || "none"}
+                  onValueChange={(value) =>
+                    handleStatusChange(product.id, value as "none" | "pending" | "approved" | "rejected")
+                  }
+                >
+                  <SelectTrigger className="w-32 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* ALTERAÇÃO: Adicionado o item "Sem Status" */}
+                    <SelectItem value="none">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                        Sem Status
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pending">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                        Aguardando
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="approved">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        Aprovado
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="rejected">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        Negado
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-col gap-1">
+                  <Select
+                    value={product.paymentType || "cash"}
+                    onValueChange={(value) => {
+                      if (value === "cash") {
+                        handlePaymentChange(product.id, "cash", undefined)
+                      } else {
+                        handlePaymentChange(product.id, "installments", product.installments || 2)
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-24 h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">À vista</SelectItem>
+                      <SelectItem value="installments">Parcelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {product.paymentType === "installments" && (
+                    <Select
+                      value={product.installments?.toString() || "2"}
+                      onValueChange={(value) => handlePaymentChange(product.id, "installments", Number.parseInt(value))}
+                    >
+                      <SelectTrigger className="w-24 h-7 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12].map((num) => (
+                          <SelectItem key={num} value={num.toString()}>
+                            {num}x
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </TableCell>
               <TableCell>
                 <span className="font-semibold text-libelle-teal">{formatCurrency(product.value)}</span>

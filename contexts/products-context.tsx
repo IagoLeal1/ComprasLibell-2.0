@@ -1,5 +1,3 @@
-// shopping-list-app/contexts/products-context.tsx
-
 "use client"
 
 import type React from "react"
@@ -14,11 +12,12 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
+  deleteField,
 } from "firebase/firestore"
-import { db } from "@/lib/firebase" // Importando a configuração do Firebase
+import { db } from "@/lib/firebase"
 import { useAuth } from "./auth-context"
 
-// Interface atualizada com os novos campos e o tipo Date corrigido
+// ALTERAÇÃO: Adicionado "none" ao tipo de status
 export interface Product {
   id: string
   name: string
@@ -26,14 +25,15 @@ export interface Product {
   link: string
   observation: string
   value: number
-  createdAt: Date // Usando Date para evitar erros de tipo
+  createdAt: Date
   userId: string
-  needsToBuy: boolean
-  wasPurchased: boolean
+  status: "none" | "pending" | "approved" | "rejected"
+  paymentType: "cash" | "installments"
+  installments?: number
+  wasPurchased?: boolean
 }
 
-// O tipo para um novo produto, sem os campos automáticos
-type NewProductData = Omit<Product, "id" | "createdAt" | "userId" | "needsToBuy" | "wasPurchased">
+type NewProductData = Omit<Product, "id" | "createdAt" | "userId" | "status" | "wasPurchased">
 
 interface ProductsContextType {
   products: Product[]
@@ -49,7 +49,6 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([])
   const { user } = useAuth()
 
-  // Este useEffect agora busca os dados do FIREBASE quando o usuário loga
   useEffect(() => {
     const fetchProducts = async (userId: string) => {
       if (!userId) {
@@ -65,7 +64,6 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
           return {
             id: doc.id,
             ...data,
-            // Convertendo o Timestamp do Firebase para um Date do JS
             createdAt: (data.createdAt as Timestamp).toDate(),
           } as Product
         })
@@ -79,57 +77,69 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       fetchProducts(user.id)
     } else {
-      setProducts([]) // Limpa os produtos se o usuário fizer logout
+      setProducts([])
     }
   }, [user])
 
-  // Função para ADICIONAR um produto no FIREBASE
   const addProduct = async (productData: NewProductData) => {
     if (!user) return
 
     try {
-      // Adicionando os novos campos com valores padrão
-      const newProductData = {
+      const dataForFirebase = {
         ...productData,
-        createdAt: Timestamp.now(), // Data/hora atual do servidor
         userId: user.id,
-        needsToBuy: false,      // Valor padrão
-        wasPurchased: false,    // Valor padrão
+        createdAt: Timestamp.now(),
+        status: "none" as const, // ALTERAÇÃO: Status padrão agora é "none"
+        wasPurchased: false,
+        installments: productData.paymentType === "installments" ? productData.installments || 1 : deleteField(),
       }
       
-      const docRef = await addDoc(collection(db, "products"), newProductData)
+      const docRef = await addDoc(collection(db, "products"), dataForFirebase)
       
-      // Atualizando o estado local para a UI responder imediatamente
-      setProducts((prev) => [
-        ...prev,
-        {
-          ...productData,
-          id: docRef.id,
-          createdAt: new Date(),
-          userId: user.id,
-          needsToBuy: false,
-          wasPurchased: false,
-        },
-      ])
+      const newProductForState: Product = {
+        ...productData,
+        id: docRef.id,
+        userId: user.id,
+        createdAt: new Date(),
+        status: "none", // ALTERAÇÃO: Status padrão para o estado local
+        wasPurchased: false,
+      }
+      
+      setProducts((prev) => [...prev, newProductForState])
+
     } catch (error) {
       console.error("Erro ao adicionar produto no Firebase:", error)
     }
   }
 
-  // Função para ATUALIZAR um produto no FIREBASE
   const updateProduct = async (id: string, productData: Partial<Product>) => {
     try {
       const productRef = doc(db, "products", id)
-      await updateDoc(productRef, productData)
+      const dataToUpdate = { ...productData }
+
+      if (Object.prototype.hasOwnProperty.call(dataToUpdate, 'installments') && dataToUpdate.installments === undefined) {
+        (dataToUpdate as any).installments = deleteField()
+      }
+
+      await updateDoc(productRef, dataToUpdate)
+
       setProducts((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, ...productData } : p)),
+        prev.map((p) => {
+          if (p.id === id) {
+            const updatedProduct = { ...p, ...productData }
+            if (productData.paymentType === 'cash') {
+              delete updatedProduct.installments
+            }
+            return updatedProduct
+          }
+          return p
+        }),
       )
     } catch (error) {
       console.error("Erro ao atualizar produto no Firebase:", error)
     }
   }
 
-  // Função para DELETAR um produto no FIREBASE
   const deleteProduct = async (id: string) => {
     try {
       await deleteDoc(doc(db, "products", id))
@@ -139,7 +149,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const getProductsByUser = (userId: string): Product[] => {
+  const getProductsByUser = (userId: string) => {
     return products.filter((product) => product.userId === userId)
   }
 
