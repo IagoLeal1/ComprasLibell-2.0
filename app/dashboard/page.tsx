@@ -10,7 +10,7 @@ import { ProductForm } from "@/components/product-form"
 import { ProductList } from "@/components/product-list"
 import { useProducts, type Product } from "@/contexts/products-context"
 import { useAuth } from "@/contexts/auth-context"
-import { Plus, Search, LogOut, ShoppingCart, TrendingUp, Filter, Package } from "lucide-react"
+import { Plus, Search, LogOut, ShoppingCart, TrendingUp, Filter, Package, CheckSquare } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -26,50 +26,55 @@ export default function DashboardPage() {
 
   const userProducts = user ? getProductsByUser(user.id) : []
 
-  // ALTERAÇÃO: Array de prioridades para o filtro
   const priorities = ["all", "Alta", "Média", "Baixa"]
 
+  // ALTERAÇÃO: A lista principal agora filtra para mostrar apenas produtos NÃO comprados
+  const productsToBuy = useMemo(() => {
+    return userProducts.filter(product => !product.wasPurchased)
+  }, [userProducts]);
+
   const filteredAndSortedProducts = useMemo(() => {
-    let filtered = userProducts
+    let filtered = productsToBuy // Filtramos a partir da lista de itens a comprar
 
     if (searchTerm) {
       filtered = filtered.filter(
         (product) =>
           product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (product.priority && product.priority.toLowerCase().includes(searchTerm.toLowerCase())) || // Checagem de segurança
+          (product.priority && product.priority.toLowerCase().includes(searchTerm.toLowerCase())) ||
           product.observation.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
-    // ALTERAÇÃO: Filtrando por prioridade
     if (selectedPriority !== "all") {
       filtered = filtered.filter((product) => product.priority === selectedPriority)
     }
 
+    // A ordenação continua a mesma
     switch (sortBy) {
-      case "newest":
-        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        break
-      case "oldest":
-        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-        break
-      case "name":
-        filtered.sort((a, b) => a.name.localeCompare(b.name))
-        break
-      case "price-high":
-        filtered.sort((a, b) => b.value - a.value)
-        break
-      case "price-low":
-        filtered.sort((a, b) => a.value - b.value)
-        break
-      default:
-        break
-    }
+        case "newest":
+          filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          break
+        case "oldest":
+          filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          break
+        case "name":
+          filtered.sort((a, b) => a.name.localeCompare(b.name))
+          break
+        case "price-high":
+          filtered.sort((a, b) => b.value - a.value)
+          break
+        case "price-low":
+          filtered.sort((a, b) => a.value - b.value)
+          break
+        default:
+          break
+      }
 
     return filtered
-  }, [userProducts, searchTerm, selectedPriority, sortBy])
+  }, [productsToBuy, searchTerm, selectedPriority, sortBy])
 
-  const totalValue = userProducts.reduce((sum, product) => sum + product.value, 0)
+  // ALTERAÇÃO: O valor total agora é calculado com base nos itens a comprar
+  const totalValue = productsToBuy.reduce((sum, product) => sum + product.value, 0)
 
   const handleAddProduct = () => {
     setEditingProduct(undefined)
@@ -115,6 +120,16 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                {/* ALTERAÇÃO: Link para a nova página de Comprados */}
+                <Link href="/comprados">
+                  <Button
+                    variant="outline"
+                    className="border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white transition-all duration-200 bg-transparent"
+                  >
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    Comprados
+                  </Button>
+                </Link>
                 <Link href="/estoque">
                   <Button
                     variant="outline"
@@ -147,13 +162,13 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="px-4 pt-2">
-                <div className="text-2xl font-bold text-libelle-dark-blue">{userProducts.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">produtos cadastrados</p>
+                <div className="text-2xl font-bold text-libelle-dark-blue">{productsToBuy.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">produtos a comprar</p>
               </CardContent>
             </Card>
             <Card className="border-libelle-teal/20 shadow-sm hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm py-4">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4">
-                <CardTitle className="text-sm font-medium text-libelle-dark-blue">Valor Total</CardTitle>
+                <CardTitle className="text-sm font-medium text-libelle-dark-blue">Valor a Comprar</CardTitle>
                 <div className="p-2 bg-libelle-orange/10 rounded-full">
                   <TrendingUp className="h-4 w-4 text-libelle-orange" />
                 </div>
@@ -190,7 +205,6 @@ export default function DashboardPage() {
                       className="pl-10 focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20"
                     />
                   </div>
-                  {/* ALTERAÇÃO: Filtro de Categoria para Prioridade */}
                   <Select value={selectedPriority} onValueChange={setSelectedPriority}>
                     <SelectTrigger className="w-full sm:w-48 border-libelle-teal/20 focus:ring-libelle-teal focus:border-libelle-teal">
                       <SelectValue placeholder="Prioridade" />
