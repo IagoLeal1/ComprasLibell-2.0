@@ -1,220 +1,206 @@
-"use client"
+// shopping-list-app/app/estoque/page.tsx
 
+"use client"
 import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Search, Package, AlertTriangle, TrendingUp, LogOut } from "lucide-react"
-import { useStock } from "@/contexts/stock-context"
-import { useAuth } from "@/contexts/auth-context"
-import { StockForm } from "@/components/stock-form"
-import { StockList } from "@/components/stock-list"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ProtectedRoute } from "@/components/protected-route"
+import { StockList } from "@/components/stock-list"
+import { StockForm } from "@/components/stock-form"
+import { useStock, type StockItem } from "@/contexts/stock-context"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import { Plus, Search, LogOut, Package, AlertTriangle, List, Users } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
-function StockPage() {
-  const { items } = useStock()
-  const { user, logout } = useAuth()
+export default function StockPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<StockItem | undefined>()
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [sortBy, setSortBy] = useState("name")
+  const [filterBy, setFilterBy] = useState<string>("all")
+  const [sortBy, setSortBy] = useState<string>("name")
 
-  const categories = [
-    "all",
-    "Eletrônicos",
-    "Escritório",
-    "Limpeza",
-    "Alimentação",
-    "Móveis",
-    "Equipamentos",
-    "Materiais",
-    "Outros",
-  ]
+  const { items, deleteItem } = useStock()
+  const { user, logout } = useAuth()
+  const { toast } = useToast()
 
   const filteredAndSortedItems = useMemo(() => {
-    const filtered = items.filter((item) => {
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesCategory = selectedCategory === "all" || item.category === selectedCategory
-      return matchesSearch && matchesCategory
+    let filtered = items
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (item) =>
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.sku && item.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (item.supplier && item.supplier.toLowerCase().includes(searchTerm.toLowerCase())),
+      )
+    }
+
+    if (filterBy === "low_stock") {
+      filtered = filtered.filter((item) => item.quantity <= item.minQuantity)
+    }
+
+    switch (sortBy) {
+      case "name":
+        filtered.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      case "quantity_high":
+        filtered.sort((a, b) => b.quantity - a.quantity)
+        break
+      case "quantity_low":
+        filtered.sort((a, b) => a.quantity - b.quantity)
+        break
+      default:
+        break
+    }
+
+    return filtered
+  }, [items, searchTerm, filterBy, sortBy])
+
+  const itemsWithLowStock = items.filter((item) => item.quantity <= item.minQuantity).length
+
+  const handleAddItem = () => {
+    setEditingItem(undefined)
+    setIsFormOpen(true)
+  }
+
+  const handleEditItem = (item: StockItem) => {
+    setEditingItem(item)
+    setIsFormOpen(true)
+  }
+  
+  const handleDeleteItem = (itemId: string, itemName: string) => {
+    deleteItem(itemId)
+    toast({
+        title: "Item Removido!",
+        description: `O item "${itemName}" foi removido do estoque.`
     })
+  }
 
-    return filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "name":
-          return a.name.localeCompare(b.name)
-        case "quantity":
-          return b.quantity - a.quantity
-        case "value":
-          return b.unitValue * b.quantity - a.unitValue * a.quantity
-        case "category":
-          return a.category.localeCompare(b.category)
-        case "lowStock":
-          const aLowStock = a.quantity <= a.minQuantity && a.minQuantity > 0
-          const bLowStock = b.quantity <= b.minQuantity && b.minQuantity > 0
-          if (aLowStock && !bLowStock) return -1
-          if (!aLowStock && bLowStock) return 1
-          return 0
-        default:
-          return 0
-      }
-    })
-  }, [items, searchTerm, selectedCategory, sortBy])
-
-  const totalItems = items.length
-  const totalValue = items.reduce((sum, item) => sum + item.unitValue * item.quantity, 0)
-  const lowStockItems = items.filter((item) => item.quantity <= item.minQuantity && item.minQuantity > 0).length
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value)
+  const handleCloseForm = () => {
+    setIsFormOpen(false)
+    setEditingItem(undefined)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#87d1af]/10 via-white to-[#8cc9cb]/10">
-      <div className="container mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="hover:opacity-80 transition-opacity">
-              <Image
-                src="/images/casa-libelle-logo.png"
-                alt="Casa Libelle"
-                width={60}
-                height={60}
-                className="rounded-lg"
-              />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-[#16375b]">Controle de Estoque</h1>
-              <p className="text-[#8cc9cb]">Olá, {user?.name}! Gerencie seu estoque aqui.</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard">
-              <Button
-                variant="outline"
-                className="border-[#8cc9cb] text-[#16375b] hover:bg-[#8cc9cb]/10 bg-transparent"
-              >
-                <Package className="w-4 h-4 mr-2" />
-                Lista de Compras
-              </Button>
-            </Link>
-            <Button
-              onClick={logout}
-              variant="outline"
-              className="border-[#8cc9cb] text-[#16375b] hover:bg-[#8cc9cb]/10 bg-transparent"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="border-[#8cc9cb]/30 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#8cc9cb]">Total de Itens</CardTitle>
-              <Package className="h-4 w-4 text-[#1da7ac]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#16375b]">{totalItems}</div>
-              <p className="text-xs text-[#8cc9cb]">itens cadastrados</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#8cc9cb]/30 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#8cc9cb]">Valor Total</CardTitle>
-              <TrendingUp className="h-4 w-4 text-[#1da7ac]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#16375b]">{formatCurrency(totalValue)}</div>
-              <p className="text-xs text-[#8cc9cb]">valor do estoque</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#8cc9cb]/30 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#8cc9cb]">Estoque Baixo</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{lowStockItems}</div>
-              <p className="text-xs text-[#8cc9cb]">itens com estoque baixo</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters and Add Button */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
-          <div className="flex-1 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8cc9cb] h-4 w-4" />
-              <Input
-                placeholder="Buscar por nome, fornecedor ou SKU..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border-[#8cc9cb] focus:border-[#1da7ac]"
-              />
-            </div>
-
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full sm:w-[200px] border-[#8cc9cb] focus:border-[#1da7ac]">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as categorias</SelectItem>
-                {categories.slice(1).map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full sm:w-[200px] border-[#8cc9cb] focus:border-[#1da7ac]">
-                <SelectValue placeholder="Ordenar por" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">Nome</SelectItem>
-                <SelectItem value="quantity">Quantidade</SelectItem>
-                <SelectItem value="value">Valor Total</SelectItem>
-                <SelectItem value="category">Categoria</SelectItem>
-                <SelectItem value="lowStock">Estoque Baixo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button onClick={() => setIsFormOpen(true)} className="bg-[#1da7ac] hover:bg-[#1da7ac]/90 text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Adicionar Item
-          </Button>
-        </div>
-
-        {/* Items List */}
-        <StockList items={filteredAndSortedItems} />
-
-        {/* Add/Edit Form */}
-        <StockForm isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} />
-      </div>
-    </div>
-  )
-}
-
-export default function EstoquePage() {
-  return (
     <ProtectedRoute>
-      <StockPage />
+      <div className="min-h-screen bg-gradient-to-br from-libelle-light-green/15 via-libelle-light-teal/10 to-libelle-teal/5">
+        <header className="bg-white/95 backdrop-blur-sm border-b border-libelle-teal/20 shadow-sm sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-4">
+                <div className="p-2">
+                  <Image
+                    src="/images/casa-libelle-logo.png"
+                    alt="Casa Libelle Logo"
+                    width={80}
+                    height={40}
+                    className="object-contain"
+                  />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-libelle-dark-blue">Controle de Estoque</h1>
+                  <p className="text-sm text-libelle-teal">Bem-vindo, {user?.name}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Link href="/profissionais">
+                  <Button variant="outline" className="border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white">
+                    <Users className="h-4 w-4 mr-2" />
+                    Profissionais
+                  </Button>
+                </Link>
+                <Link href="/dashboard">
+                  <Button variant="outline" className="border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white transition-all duration-200 bg-transparent">
+                    <List className="h-4 w-4 mr-2" />
+                    Lista de Compras
+                  </Button>
+                </Link>
+                <Button variant="outline" onClick={logout} className="border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white transition-all duration-200 bg-transparent">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sair
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <Card className="border-libelle-teal/20 shadow-sm hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm py-4">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4">
+                <CardTitle className="text-sm font-medium text-libelle-dark-blue">Itens Totais</CardTitle>
+                <div className="p-2 bg-libelle-teal/10 rounded-full"><Package className="h-4 w-4 text-libelle-teal" /></div>
+              </CardHeader>
+              <CardContent className="px-4 pt-2">
+                <div className="text-2xl font-bold text-libelle-dark-blue">{items.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">tipos de itens cadastrados</p>
+              </CardContent>
+            </Card>
+            <Card className="border-libelle-teal/20 shadow-sm hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm py-4">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4">
+                <CardTitle className="text-sm font-medium text-libelle-dark-blue">Itens com Estoque Baixo</CardTitle>
+                <div className="p-2 bg-yellow-100 rounded-full"><AlertTriangle className="h-4 w-4 text-yellow-600" /></div>
+              </CardHeader>
+              <CardContent className="px-4 pt-2">
+                <div className="text-2xl font-bold text-libelle-dark-blue">{itemsWithLowStock}</div>
+                <p className="text-xs text-muted-foreground mt-1">precisando de reposição</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="mb-8 border-libelle-teal/20 shadow-sm bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-libelle-teal h-4 w-4" />
+                    <Input placeholder="Buscar por nome..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20" />
+                  </div>
+                  <Select value={filterBy} onValueChange={setFilterBy}>
+                    <SelectTrigger className="w-full sm:w-48 border-libelle-teal/20 focus:ring-libelle-teal focus:border-libelle-teal">
+                      <SelectValue placeholder="Filtrar por" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os itens</SelectItem>
+                      <SelectItem value="low_stock">Estoque baixo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-full sm:w-48 border-libelle-teal/20 focus:ring-libelle-teal focus:border-libelle-teal">
+                      <SelectValue placeholder="Ordenar por" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Nome (A-Z)</SelectItem>
+                      <SelectItem value="quantity_high">Maior quantidade</SelectItem>
+                      <SelectItem value="quantity_low">Menor quantidade</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleAddItem} className="bg-libelle-teal hover:bg-libelle-teal/90 text-white shadow-md hover:shadow-lg transition-all duration-200">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Item
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <StockList items={filteredAndSortedItems} onEditItem={handleEditItem} onDeleteItem={handleDeleteItem} />
+
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-libelle-teal/20">
+              <DialogHeader>
+                <DialogTitle className="sr-only">{editingItem ? "Editar Item" : "Adicionar Item"}</DialogTitle>
+              </DialogHeader>
+              <StockForm item={editingItem} onClose={handleCloseForm} />
+            </DialogContent>
+          </Dialog>
+        </main>
+      </div>
     </ProtectedRoute>
   )
 }

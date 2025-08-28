@@ -12,11 +12,12 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
+  runTransaction,
+  orderBy,
 } from "firebase/firestore"
-import { db } from "@/lib/firebase" // Importando nossa conexão com o Firebase
+import { db } from "@/lib/firebase"
 import { useAuth } from "./auth-context"
 
-// Interface atualizada para usar Date em vez de string
 export interface StockItem {
   id: string
   name: string
@@ -31,15 +32,32 @@ export interface StockItem {
   updatedAt: Date
   needsToBuy: boolean
   wasPurchased: boolean
-  userId: string // Adicionado para vincular o item ao usuário
+  userId: string
 }
+
+export interface StockMovement {
+    id?: string
+    itemId: string
+    itemName: string
+    userId: string
+    userName: string
+    takenBy: string
+    type: "entrada" | "saída"
+    quantityChange: number
+    quantityAfter: number
+    timestamp: Date
+}
+
+type NewStockData = Pick<StockItem, "name" | "quantity" | "observation">
 
 interface StockContextType {
   items: StockItem[]
-  addItem: (item: Omit<StockItem, "id" | "createdAt" | "updatedAt" | "userId" | "needsToBuy" | "wasPurchased">) => Promise<void>
+  addItem: (item: NewStockData) => Promise<void>
   updateItem: (id: string, item: Partial<StockItem>) => Promise<void>
   deleteItem: (id: string) => Promise<void>
   getItemById: (id: string) => StockItem | undefined
+  logStockMovement: (itemId: string, quantityChange: number, type: "entrada" | "saída", takenBy?: string) => Promise<void>
+  getItemMovements: (itemId: string) => Promise<StockMovement[]>
 }
 
 const StockContext = createContext<StockContextType | undefined>(undefined)
@@ -48,113 +66,122 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [items, setItems] = useState<StockItem[]>([])
 
-  // Efeito para buscar os itens do Firestore quando o usuário é carregado
   useEffect(() => {
     const fetchItems = async (userId: string) => {
-      if (!userId) {
-        setItems([])
-        return
-      }
-      try {
-        const q = query(collection(db, "stockItems"), where("userId", "==", userId))
-        const querySnapshot = await getDocs(q)
-        
-        const userItems = querySnapshot.docs.map((doc) => {
-          const data = doc.data()
-          return {
+        if (!userId) { setItems([]); return }
+        const q = query(collection(db, "stockItems"), where("userId", "==", userId));
+        const querySnapshot = await getDocs(q);
+        const userItems = querySnapshot.docs.map(doc => ({
             id: doc.id,
-            ...data,
-            // Convertendo Timestamps do Firebase para objetos Date do JavaScript
-            createdAt: (data.createdAt as Timestamp).toDate(),
-            updatedAt: (data.updatedAt as Timestamp).toDate(),
-          } as StockItem
-        })
-        
-        setItems(userItems)
-      } catch (error) {
-        console.error("Erro ao buscar itens do estoque:", error)
-      }
-    }
+            ...doc.data(),
+            createdAt: (doc.data().createdAt as Timestamp).toDate(),
+            updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
+        } as StockItem));
+        setItems(userItems);
+    };
+    if (user) { fetchItems(user.id) } else { setItems([]) }
+  }, [user]);
 
-    if (user) {
-      fetchItems(user.id)
-    } else {
-      setItems([])
-    }
-  }, [user])
-
-  // Adiciona um novo item ao Firestore
-  const addItem = async (itemData: Omit<StockItem, "id" | "createdAt" | "updatedAt" | "userId" | "needsToBuy" | "wasPurchased">) => {
+  const addItem = async (itemData: NewStockData) => {
     if (!user) return
-
-    try {
-      const newItemData = {
+    const newItemData = {
         ...itemData,
         userId: user.id,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-        needsToBuy: itemData.quantity <= itemData.minQuantity,
+        needsToBuy: false,
         wasPurchased: false,
-      }
-
-      const docRef = await addDoc(collection(db, "stockItems"), newItemData)
-      
-      // Atualiza o estado local para a UI responder na hora
-      setItems((prev) => [
-        ...prev,
-        {
-          ...newItemData,
-          id: docRef.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ])
-    } catch (error) {
-      console.error("Erro ao adicionar item ao estoque:", error)
-    }
+        category: "",
+        minQuantity: 0,
+        supplier: "",
+        sku: "",
+        unitValue: 0,
+    };
+    const docRef = await addDoc(collection(db, "stockItems"), newItemData);
+    setItems(prev => [...prev, { ...newItemData, id: docRef.id, createdAt: new Date(), updatedAt: new Date() }]);
   }
 
-  // Atualiza um item existente no Firestore
   const updateItem = async (id: string, itemData: Partial<StockItem>) => {
+    const itemRef = doc(db, "stockItems", id);
+    const updateData = { ...itemData, updatedAt: Timestamp.now() };
+    await updateDoc(itemRef, updateData);
+    setItems(prev => prev.map(item => item.id === id ? { ...item, ...updateData, updatedAt: new Date() } : item));
+  }
+  
+  const logStockMovement = async (itemId: string, quantityChange: number, type: "entrada" | "saída", takenBy: string = "N/A") => {
+    if (!user) throw new Error("Usuário não autenticado.");
+
+    const itemRef = doc(db, "stockItems", itemId);
+    const movementLogRef = collection(db, "stockMovements");
+
     try {
-      const itemRef = doc(db, "stockItems", id)
-      const updateData = {
-        ...itemData,
-        updatedAt: Timestamp.now(), // Sempre atualiza a data de modificação
-      }
-      await updateDoc(itemRef, updateData)
+      await runTransaction(db, async (transaction) => {
+        const itemDoc = await transaction.get(itemRef);
+        if (!itemDoc.exists()) {
+          throw "Documento não existe!";
+        }
+
+        const currentQuantity = itemDoc.data().quantity;
+        const newQuantity = currentQuantity + quantityChange;
+
+        if (newQuantity < 0) {
+            throw "A quantidade em estoque não pode ser negativa.";
+        }
+        
+        transaction.update(itemRef, { quantity: newQuantity, updatedAt: Timestamp.now() });
+
+        const movementData = {
+            itemId: itemId,
+            itemName: itemDoc.data().name,
+            userId: user.id,
+            userName: user.name || "N/A",
+            takenBy: type === 'saída' ? takenBy : "Entrada no Estoque",
+            type: type,
+            quantityChange: quantityChange,
+            quantityAfter: newQuantity,
+            timestamp: Timestamp.now()
+        };
+        transaction.set(doc(movementLogRef), movementData);
+      });
+
+      setItems(prev => prev.map(item => item.id === itemId ? { ...item, quantity: item.quantity + quantityChange, updatedAt: new Date() } : item));
       
-      setItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, ...updateData, updatedAt: new Date() } : item)),
-      )
-    } catch (error) {
-      console.error("Erro ao atualizar item do estoque:", error)
+    } catch (e) {
+      console.error("Falha na transação: ", e);
+      throw e;
     }
-  }
+  };
 
-  // Deleta um item do Firestore
   const deleteItem = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "stockItems", id))
-      setItems((prev) => prev.filter((item) => item.id !== id))
-    } catch (error) {
-      console.error("Erro ao deletar item do estoque:", error)
-    }
+    await deleteDoc(doc(db, "stockItems", id));
+    setItems(prev => prev.filter(item => item.id !== id));
   }
 
-  const getItemById = (id: string) => {
-    return items.find((item) => item.id === id)
+  const getItemById = (id: string) => items.find(item => item.id === id);
+
+  const getItemMovements = async (itemId: string): Promise<StockMovement[]> => {
+    try {
+        const q = query(
+            collection(db, "stockMovements"),
+            where("itemId", "==", itemId),
+            where("type", "==", "saída"),
+            orderBy("timestamp", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: (doc.data().timestamp as Timestamp).toDate()
+        })) as StockMovement[];
+    } catch (error) {
+        console.error("Erro ao buscar histórico do item:", error);
+        return [];
+    }
   }
 
   return (
     <StockContext.Provider
-      value={{
-        items,
-        addItem,
-        updateItem,
-        deleteItem,
-        getItemById,
-      }}
+      value={{ items, addItem, updateItem, deleteItem, getItemById, logStockMovement, getItemMovements }}
     >
       {children}
     </StockContext.Provider>
