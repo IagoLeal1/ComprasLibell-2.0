@@ -17,7 +17,7 @@ import {
 import { db } from "@/lib/firebase"
 import { useAuth } from "./auth-context"
 
-// ALTERAÇÃO: Trocamos 'category' por 'priority'
+// ALTERAÇÃO: Adicionado o campo purchasedAt
 export interface Product {
   id: string
   name: string
@@ -31,9 +31,10 @@ export interface Product {
   paymentType: "cash" | "installments"
   installments?: number
   wasPurchased?: boolean
+  purchasedAt?: Date // NOVO CAMPO
 }
 
-type NewProductData = Omit<Product, "id" | "createdAt" | "userId" | "status" | "wasPurchased">
+type NewProductData = Omit<Product, "id" | "createdAt" | "userId" | "status" | "wasPurchased" | "purchasedAt">
 
 interface ProductsContextType {
   products: Product[]
@@ -65,6 +66,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
             id: doc.id,
             ...data,
             createdAt: (data.createdAt as Timestamp).toDate(),
+            // ALTERAÇÃO: Converte o Timestamp de purchasedAt para Date
+            purchasedAt: data.purchasedAt ? (data.purchasedAt as Timestamp).toDate() : undefined,
           } as Product
         })
         
@@ -118,18 +121,30 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const updateProduct = async (id: string, productData: Partial<Product>) => {
     try {
       const productRef = doc(db, "products", id)
-      const dataToUpdate = { ...productData }
+      const dataToUpdate: Partial<Product> & { purchasedAt?: any } = { ...productData }
+
+      // ALTERAÇÃO: Se o produto foi comprado, adiciona a data. Se desmarcado, remove.
+      if (dataToUpdate.wasPurchased === true) {
+        dataToUpdate.purchasedAt = Timestamp.now();
+      } else if (dataToUpdate.wasPurchased === false) {
+        dataToUpdate.purchasedAt = deleteField();
+      }
 
       if (Object.prototype.hasOwnProperty.call(dataToUpdate, 'installments') && dataToUpdate.installments === undefined) {
         (dataToUpdate as any).installments = deleteField()
       }
 
-      await updateDoc(productRef, dataToUpdate)
+      await updateDoc(productRef, dataToUpdate as any)
 
       setProducts((prev) =>
         prev.map((p) => {
           if (p.id === id) {
-            const updatedProduct = { ...p, ...productData }
+            const updatedProduct = { ...p, ...dataToUpdate }
+            if (dataToUpdate.wasPurchased === false) {
+              delete updatedProduct.purchasedAt;
+            } else {
+              updatedProduct.purchasedAt = new Date(); // Atualiza o estado local com a data atual
+            }
             if (productData.paymentType === 'cash') {
               delete updatedProduct.installments
             }

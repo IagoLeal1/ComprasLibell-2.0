@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useProducts, type Product } from "@/contexts/products-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Edit, Trash2, ExternalLink, Package, CheckCircle } from "lucide-react"
+import { Edit, Trash2, ExternalLink, Package, CheckCircle, CalendarIcon } from "lucide-react"
 
 interface ProductListProps {
   products: Product[]
@@ -67,8 +67,13 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
       currency: "BRL",
     }).format(value)
   }
+  
+  // NOVA FUNÇÃO para formatar a data
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "-";
+    return new Intl.DateTimeFormat("pt-BR").format(date);
+  }
 
-  // ALTERAÇÃO: Função para cores da prioridade
   const getPriorityColor = (priority: string) => {
     const colors = {
       Baixa: "border-transparent bg-blue-100 text-blue-800",
@@ -101,8 +106,11 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
               <CheckCircle className="h-4 w-4 text-libelle-teal" />
             </TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Produto</TableHead>
-            {/* ALTERAÇÃO: Cabeçalho de Categoria para Prioridade */}
             <TableHead className="text-libelle-dark-blue font-semibold">Prioridade</TableHead>
+            {/* ALTERAÇÃO: Adicionando a coluna de Data da Compra */}
+            {products.some(p => p.wasPurchased) && (
+              <TableHead className="text-libelle-dark-blue font-semibold">Data da Compra</TableHead>
+            )}
             <TableHead className="text-libelle-dark-blue font-semibold">Status</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Pagamento</TableHead>
             <TableHead className="text-libelle-dark-blue font-semibold">Valor</TableHead>
@@ -131,12 +139,17 @@ export function ProductList({ products, onEditProduct }: ProductListProps) {
                   )}
                 </div>
               </TableCell>
-              {/* ALTERAÇÃO: Célula de Categoria para Prioridade */}
               <TableCell>
                 <Badge className={getPriorityColor(product.priority)} variant="secondary">
                   {product.priority}
                 </Badge>
               </TableCell>
+              {/* ALTERAÇÃO: Adicionando a célula da Data da Compra */}
+              {products.some(p => p.wasPurchased) && (
+                <TableCell>
+                  <span className="text-sm text-muted-foreground">{formatDate(product.purchasedAt)}</span>
+                </TableCell>
+              )}
               <TableCell>
                 <Select
                   value={product.status || "none"}
