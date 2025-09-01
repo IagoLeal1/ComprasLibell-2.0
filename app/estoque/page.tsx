@@ -22,11 +22,14 @@ export default function StockPage() {
   const [editingItem, setEditingItem] = useState<StockItem | undefined>()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterBy, setFilterBy] = useState<string>("all")
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("name")
 
   const { items, deleteItem } = useStock()
   const { user, logout } = useAuth()
   const { toast } = useToast()
+
+  const categories = ["all", "Recorrente", "Não Recorrente"];
 
   const filteredAndSortedItems = useMemo(() => {
     let filtered = items
@@ -44,6 +47,10 @@ export default function StockPage() {
       filtered = filtered.filter((item) => item.quantity <= item.minQuantity)
     }
 
+    if (filterCategory !== "all") {
+      filtered = filtered.filter((item) => item.category === filterCategory);
+    }
+
     switch (sortBy) {
       case "name":
         filtered.sort((a, b) => a.name.localeCompare(b.name))
@@ -59,7 +66,7 @@ export default function StockPage() {
     }
 
     return filtered
-  }, [items, searchTerm, filterBy, sortBy])
+  }, [items, searchTerm, filterBy, filterCategory, sortBy])
 
   const itemsWithLowStock = items.filter((item) => item.quantity <= item.minQuantity).length
 
@@ -168,6 +175,18 @@ export default function StockPage() {
                     <SelectContent>
                       <SelectItem value="all">Todos os itens</SelectItem>
                       <SelectItem value="low_stock">Estoque baixo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger className="w-full sm:w-48 border-libelle-teal/20 focus:ring-libelle-teal focus:border-libelle-teal">
+                      <SelectValue placeholder="Categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category === "all" ? "Todas as categorias" : category}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Select value={sortBy} onValueChange={setSortBy}>

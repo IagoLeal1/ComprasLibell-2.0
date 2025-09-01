@@ -19,7 +19,7 @@ interface StockListProps {
 }
 
 export function StockList({ items, onEditItem, onDeleteItem }: StockListProps) {
-  const { logStockMovement, getItemMovements } = useStock();
+  const { logStockMovement, getItemMovements, updateItem } = useStock();
   const { professionals } = useProfessionals();
   const { toast } = useToast();
   
@@ -81,6 +81,15 @@ export function StockList({ items, onEditItem, onDeleteItem }: StockListProps) {
     setHistoryLogs(movements);
     setIsLoadingHistory(false);
   };
+  
+  const handleCategoryToggle = (item: StockItem) => {
+    const newCategory = item.category === "Recorrente" ? "Não Recorrente" : "Recorrente";
+    updateItem(item.id, { category: newCategory });
+    toast({
+      title: "Categoria atualizada!",
+      description: `O item "${item.name}" foi atualizado para ${newCategory}.`,
+    })
+  }
 
   if (items.length === 0) {
     return (
@@ -103,6 +112,7 @@ export function StockList({ items, onEditItem, onDeleteItem }: StockListProps) {
           <TableHeader>
             <TableRow className="bg-libelle-teal/5">
               <TableHead className="text-libelle-dark-blue font-semibold">Item</TableHead>
+              <TableHead className="text-libelle-dark-blue font-semibold">Categoria</TableHead>
               <TableHead className="text-libelle-dark-blue font-semibold">Quantidade</TableHead>
               <TableHead className="text-libelle-dark-blue font-semibold">Status</TableHead>
               <TableHead className="text-libelle-dark-blue font-semibold text-center w-48">Movimentar</TableHead>
@@ -117,6 +127,15 @@ export function StockList({ items, onEditItem, onDeleteItem }: StockListProps) {
                     <span className="font-medium text-libelle-dark-blue">{item.name}</span>
                   </button>
                   <p className="text-xs text-muted-foreground">{item.observation || ""}</p>
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={item.category === "Recorrente" ? "libelle" : "secondary"}
+                    onClick={() => handleCategoryToggle(item)}
+                    className="cursor-pointer"
+                  >
+                    {item.category}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <span className="font-semibold text-libelle-dark-blue text-lg">{item.quantity}</span>

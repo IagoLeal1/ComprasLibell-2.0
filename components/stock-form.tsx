@@ -6,21 +6,24 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useStock, type StockItem } from "@/contexts/stock-context"
 import { useToast } from "@/hooks/use-toast"
-import { Package, FileText, Hash } from "lucide-react"
+import { Package, FileText, Hash, Tag } from "lucide-react"
 
 export interface StockFormProps {
   item?: StockItem
   onClose: () => void
 }
 
+const categories: ("Recorrente" | "Não Recorrente")[] = ["Recorrente", "Não Recorrente"];
+
 export function StockForm({ item, onClose }: StockFormProps) {
-  // ALTERAÇÃO: Mantidos apenas os 3 states necessários
   const [name, setName] = useState("")
   const [quantity, setQuantity] = useState("")
   const [observation, setObservation] = useState("")
+  const [category, setCategory] = useState<"Recorrente" | "Não Recorrente">("Não Recorrente");
   const [isLoading, setIsLoading] = useState(false)
 
   const { addItem, updateItem } = useStock()
@@ -31,6 +34,7 @@ export function StockForm({ item, onClose }: StockFormProps) {
       setName(item.name || "")
       setQuantity(item.quantity?.toString() || "0")
       setObservation(item.observation || "")
+      setCategory(item.category || "Não Recorrente")
     }
   }, [item])
 
@@ -39,11 +43,11 @@ export function StockForm({ item, onClose }: StockFormProps) {
     setIsLoading(true)
 
     try {
-      // ALTERAÇÃO: Objeto de dados com apenas 3 campos
       const itemData = {
         name,
         quantity: Number.parseInt(quantity) || 0,
         observation,
+        category,
       }
 
       if (item) {
@@ -53,6 +57,7 @@ export function StockForm({ item, onClose }: StockFormProps) {
           description: "O item do estoque foi atualizado com sucesso.",
         })
       } else {
+        // @ts-ignore
         await addItem(itemData)
         toast({
           title: "Item adicionado!",
@@ -82,24 +87,41 @@ export function StockForm({ item, onClose }: StockFormProps) {
         </div>
       </CardHeader>
       <CardContent className="p-6">
-        {/* ALTERAÇÃO: Formulário simplificado */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="flex items-center space-x-2 text-libelle-dark-blue font-medium">
-              <Package className="h-4 w-4 text-libelle-teal" />
-              <span>Nome do Item *</span>
-            </Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="flex items-center space-x-2 text-libelle-dark-blue font-medium">
+                <Package className="h-4 w-4 text-libelle-teal" />
+                <span>Nome do Item *</span>
+              </Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quantity" className="flex items-center space-x-2 text-libelle-dark-blue font-medium">
+                <Hash className="h-4 w-4 text-libelle-teal" />
+                <span>Quantidade Inicial *</span>
+              </Label>
+              <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+            </div>
           </div>
-
           <div className="space-y-2">
-            <Label htmlFor="quantity" className="flex items-center space-x-2 text-libelle-dark-blue font-medium">
-              <Hash className="h-4 w-4 text-libelle-teal" />
-              <span>Quantidade Inicial *</span>
+            <Label htmlFor="category" className="flex items-center space-x-2 text-libelle-dark-blue font-medium">
+              <Tag className="h-4 w-4 text-libelle-teal" />
+              <span>Categoria *</span>
             </Label>
-            <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+            <Select value={category} onValueChange={(v) => setCategory(v as "Recorrente" | "Não Recorrente")} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="observation" className="flex items-center space-x-2 text-libelle-dark-blue font-medium">
               <FileText className="h-4 w-4 text-libelle-teal" />

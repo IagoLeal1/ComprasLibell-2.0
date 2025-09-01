@@ -21,7 +21,7 @@ import { useAuth } from "./auth-context"
 export interface StockItem {
   id: string
   name: string
-  category: string
+  category: "Recorrente" | "Não Recorrente"
   quantity: number
   minQuantity: number
   supplier: string
@@ -48,7 +48,7 @@ export interface StockMovement {
     timestamp: Date
 }
 
-type NewStockData = Pick<StockItem, "name" | "quantity" | "observation">
+type NewStockData = Pick<StockItem, "name" | "quantity" | "observation" | "category">
 
 interface StockContextType {
   items: StockItem[]
@@ -71,12 +71,16 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
         if (!userId) { setItems([]); return }
         const q = query(collection(db, "stockItems"), where("userId", "==", userId));
         const querySnapshot = await getDocs(q);
-        const userItems = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: (doc.data().createdAt as Timestamp).toDate(),
-            updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
-        } as StockItem));
+        const userItems = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                category: data.category || "Não Recorrente", // Define "Não Recorrente" como padrão
+                createdAt: (data.createdAt as Timestamp).toDate(),
+                updatedAt: (data.updatedAt as Timestamp).toDate(),
+            } as StockItem
+        });
         setItems(userItems);
     };
     if (user) { fetchItems(user.id) } else { setItems([]) }
@@ -91,7 +95,6 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
         updatedAt: Timestamp.now(),
         needsToBuy: false,
         wasPurchased: false,
-        category: "",
         minQuantity: 0,
         supplier: "",
         sku: "",
