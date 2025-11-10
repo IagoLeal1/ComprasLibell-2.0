@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { LogOut, List, Users, Trash2, Plus } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { Header } from "@/components/header"
 
 export default function ProfessionalsPage() {
   const { professionals, addProfessional, deleteProfessional, isLoading } = useProfessionals()
@@ -54,23 +55,7 @@ export default function ProfessionalsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-libelle-light-green/15 via-libelle-light-teal/10 to-libelle-teal/5">
-        <header className="bg-white/95 backdrop-blur-sm border-b border-libelle-teal/20 shadow-sm sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-4">
-                <div className="p-2"><Image src="/images/casa-libelle-logo.png" alt="Casa Libelle Logo" width={80} height={40} className="object-contain" /></div>
-                <div>
-                  <h1 className="text-xl font-bold text-libelle-dark-blue">Gerenciar Profissionais</h1>
-                  <p className="text-sm text-libelle-teal">Adicione ou remova nomes da lista</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link href="/dashboard"><Button variant="outline" className="border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white"><List className="h-4 w-4 mr-2" />Lista de Compras</Button></Link>
-                <Button variant="outline" onClick={logout} className="border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white"><LogOut className="h-4 w-4 mr-2" />Sair</Button>
-              </div>
-            </div>
-          </div>
-        </header>
+        <Header title="Gerenciar Profissionais" subtitle="Adicione ou remova nomes da lista" />
 
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card className="border-libelle-teal/20 shadow-sm bg-white/80 backdrop-blur-sm">

@@ -6,8 +6,10 @@ import { Roboto } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ProductsProvider } from "@/contexts/products-context"
-import { StockProvider } from "@/contexts/stock-context" // <-- Importe o StockProvider
-import { ProfessionalsProvider } from "@/contexts/professionals-context" // <-- Importe o ProfessionalsProvider
+import { StockProvider } from "@/contexts/stock-context"
+import { ProfessionalsProvider } from "@/contexts/professionals-context"
+import { TodosProvider } from "@/contexts/todos-context"
+import { SuppliesProvider } from "@/contexts/supplies-context" // <-- 1. Importar
 import { Toaster } from "@/components/ui/toaster"
 
 const roboto = Roboto({
@@ -40,13 +42,20 @@ html {
 }
         `}</style>
       </head>
-      <body className={`${roboto.variable} ${GeistSans.variable} ${GeistMono.variable}`}>
+      <body
+        className={`${roboto.variable} ${GeistSans.variable} ${GeistMono.variable}`}
+      >
         <AuthProvider>
           <ProductsProvider>
             <StockProvider>
               <ProfessionalsProvider>
-                {children}
-                <Toaster />
+                <TodosProvider>
+                  <SuppliesProvider>
+                    {" "}
+                    {children}
+                    <Toaster />
+                  </SuppliesProvider>
+                </TodosProvider>
               </ProfessionalsProvider>
             </StockProvider>
           </ProductsProvider>

@@ -17,64 +17,59 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ProtectedRoute } from "@/components/protected-route"
-import { ProductForm } from "@/components/product-form"
-import { ProductList } from "@/components/product-list"
-import { useProducts, type Product } from "@/contexts/products-context"
+import { SupplyForm } from "@/components/supply-form" // Verifique se este caminho está correto
+import { SupplyList } from "@/components/supply-list" // Verifique se este caminho está correto
+import { useSupplies, type Supply } from "@/contexts/supplies-context" // Caminho atualizado
 import { useAuth } from "@/contexts/auth-context"
-import { Plus, Search, ShoppingCart, TrendingUp, Filter } from "lucide-react"
-
-// 1. Importe o novo Header
+import {
+  Plus,
+  Search,
+  LogOut,
+  ShoppingCart,
+  TrendingUp,
+  Filter,
+  Package,
+} from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
 import { Header } from "@/components/header"
 
-export default function DashboardPage() {
+export default function SuppliesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<Product | undefined>()
+  const [editingSupply, setEditingSupply] = useState<Supply | undefined>()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedPriority, setSelectedPriority] = useState<string>("all")
   const [sortBy, setSortBy] = useState<string>("newest")
 
-  const { getProductsByUser } = useProducts()
-  const { user }/* 2. Removido 'logout' daqui */ = useAuth()
+  // Atualizado para pegar 'supplies' e 'isLoading'
+  const { supplies, isLoading } = useSupplies()
+  const { user, logout } = useAuth()
 
-  const userProducts = user ? getProductsByUser(user.id) : []
-
-  const priorities = ["all", "Alta", "Média", "Baixa"]
-
-  const productsToBuy = useMemo(() => {
-    return userProducts.filter((product) => !product.wasPurchased)
-  }, [userProducts])
-
-  const filteredAndSortedProducts = useMemo(() => {
-    let filtered = productsToBuy
+  const filteredAndSortedSupplies = useMemo(() => {
+    let filtered = supplies // Usa 'supplies' diretamente
 
     if (searchTerm) {
       filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (product.priority &&
-            product.priority.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          product.observation.toLowerCase().includes(searchTerm.toLowerCase()),
+        (supply) =>
+          supply.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          supply.observation.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
     if (selectedPriority !== "all") {
       filtered = filtered.filter(
-        (product) => product.priority === selectedPriority,
+        (supply) => supply.priority === selectedPriority,
       )
     }
 
     switch (sortBy) {
       case "newest":
-        filtered.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        )
+        // Compara como Date
+        filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         break
       case "oldest":
-        filtered.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        )
+        // Compara como Date
+        filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
         break
       case "name":
         filtered.sort((a, b) => a.name.localeCompare(b.name))
@@ -90,23 +85,24 @@ export default function DashboardPage() {
     }
 
     return filtered
-  }, [productsToBuy, searchTerm, selectedPriority, sortBy])
+  }, [supplies, searchTerm, selectedPriority, sortBy])
 
-  const totalValue = productsToBuy.reduce((sum, product) => sum + product.value, 0)
+  const totalValue = supplies.reduce((sum, supply) => sum + supply.value, 0)
+  const purchasedCount = supplies.filter((s) => s.isPurchased).length
 
-  const handleAddProduct = () => {
-    setEditingProduct(undefined)
+  const handleAddSupply = () => {
+    setEditingSupply(undefined)
     setIsFormOpen(true)
   }
 
-  const handleEditProduct = (product: Product) => {
-    setEditingProduct(product)
+  const handleEditSupply = (supply: Supply) => {
+    setEditingSupply(supply)
     setIsFormOpen(true)
   }
 
   const handleCloseForm = () => {
     setIsFormOpen(false)
-    setEditingProduct(undefined)
+    setEditingSupply(undefined)
   }
 
   const formatCurrency = (value: number) => {
@@ -116,22 +112,24 @@ export default function DashboardPage() {
     }).format(value)
   }
 
+  // Calcula o valor a comprar (apenas itens não comprados)
+  const valueToBuy = supplies
+    .filter((s) => !s.isPurchased)
+    .reduce((sum, supply) => sum + supply.value, 0)
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-libelle-light-green/15 via-libelle-light-teal/10 to-libelle-teal/5">
-        {/* 3. Bloco <header> GIGANTE foi substituído por esta linha: */}
-        <Header
-          title="Lista de Compras"
-          subtitle={`Bem-vindo, ${user?.name}`}
-        />
+        {/* Header */}
+        <Header title="Lista de Suprimentos" subtitle={`Bem-vindo, ${user?.name}`} />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* ... O resto do seu código <main> continua aqui ... */}
+          {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card className="border-libelle-teal/20 shadow-sm hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm py-4">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4">
                 <CardTitle className="text-sm font-medium text-libelle-dark-blue">
-                  Total de Produtos
+                  Total de Suprimentos
                 </CardTitle>
                 <div className="p-2 bg-libelle-teal/10 rounded-full">
                   <ShoppingCart className="h-4 w-4 text-libelle-teal" />
@@ -139,10 +137,10 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="px-4 pt-2">
                 <div className="text-2xl font-bold text-libelle-dark-blue">
-                  {productsToBuy.length}
+                  {supplies.length}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  produtos a comprar
+                  suprimentos cadastrados
                 </p>
               </CardContent>
             </Card>
@@ -157,17 +155,17 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="px-4 pt-2">
                 <div className="text-2xl font-bold text-libelle-teal">
-                  {formatCurrency(totalValue)}
+                  {formatCurrency(valueToBuy)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  valor estimado
+                  valor estimado a comprar
                 </p>
               </CardContent>
             </Card>
             <Card className="border-libelle-teal/20 shadow-sm hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm py-4">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4">
                 <CardTitle className="text-sm font-medium text-libelle-dark-blue">
-                  Produtos Filtrados
+                  Suprimentos Filtrados
                 </CardTitle>
                 <div className="p-2 bg-libelle-light-green/30 rounded-full">
                   <Filter className="h-4 w-4 text-libelle-green" />
@@ -175,7 +173,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="px-4 pt-2">
                 <div className="text-2xl font-bold text-libelle-dark-blue">
-                  {filteredAndSortedProducts.length}
+                  {filteredAndSortedSupplies.length}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   na visualização atual
@@ -184,6 +182,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
+          {/* Filters Card */}
           <Card className="mb-8 border-libelle-teal/20 shadow-sm bg-white/80 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
@@ -191,7 +190,7 @@ export default function DashboardPage() {
                   <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-libelle-teal h-4 w-4" />
                     <Input
-                      placeholder="Buscar produtos..."
+                      placeholder="Buscar suprimentos..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10 focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20"
@@ -205,13 +204,10 @@ export default function DashboardPage() {
                       <SelectValue placeholder="Prioridade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {priorities.map((priority) => (
-                        <SelectItem key={priority} value={priority}>
-                          {priority === "all"
-                            ? "Todas as prioridades"
-                            : priority}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="all">Todas as prioridades</SelectItem>
+                      <SelectItem value="low">Baixa</SelectItem>
+                      <SelectItem value="medium">Média</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={sortBy} onValueChange={setSortBy}>
@@ -228,29 +224,37 @@ export default function DashboardPage() {
                   </Select>
                 </div>
                 <Button
-                  onClick={handleAddProduct}
+                  onClick={handleAddSupply}
                   className="bg-libelle-teal hover:bg-libelle-teal/90 text-white shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Produto
+                  Adicionar Suprimento
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <ProductList
-            products={filteredAndSortedProducts}
-            onEditProduct={handleEditProduct}
-          />
+          {/* Supply List */}
+          {isLoading ? (
+            <div className="text-center py-10">Carregando suprimentos...</div>
+          ) : (
+            <SupplyList
+              supplies={filteredAndSortedSupplies}
+              onEditSupply={handleEditSupply}
+            />
+          )}
 
+          {/* Form Modal */}
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-libelle-teal/20">
               <DialogHeader>
                 <DialogTitle className="sr-only">
-                  {editingProduct ? "Editar Produto" : "Adicionar Produto"}
+                  {editingSupply
+                    ? "Editar Suprimento"
+                    : "Adicionar Suprimento"}
                 </DialogTitle>
               </DialogHeader>
-              <ProductForm product={editingProduct} onClose={handleCloseForm} />
+              <SupplyForm supply={editingSupply} onClose={handleCloseForm} />
             </DialogContent>
           </Dialog>
         </main>
