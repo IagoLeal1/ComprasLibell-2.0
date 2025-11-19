@@ -9,7 +9,9 @@ import { ProductsProvider } from "@/contexts/products-context"
 import { StockProvider } from "@/contexts/stock-context"
 import { ProfessionalsProvider } from "@/contexts/professionals-context"
 import { TodosProvider } from "@/contexts/todos-context"
-import { SuppliesProvider } from "@/contexts/supplies-context" // <-- 1. Importar
+import { SuppliesProvider } from "@/contexts/supplies-context"
+// 1. Importe o RoomsProvider aqui
+import { RoomsProvider } from "@/contexts/rooms-context"
 import { Toaster } from "@/components/ui/toaster"
 
 const roboto = Roboto({
@@ -51,9 +53,11 @@ html {
               <ProfessionalsProvider>
                 <TodosProvider>
                   <SuppliesProvider>
-                    {" "}
-                    {children}
-                    <Toaster />
+                    {/* 2. Envolva o children e o Toaster com o RoomsProvider */}
+                    <RoomsProvider>
+                      {children}
+                      <Toaster />
+                    </RoomsProvider>
                   </SuppliesProvider>
                 </TodosProvider>
               </ProfessionalsProvider>

@@ -20,8 +20,8 @@ import { useAuth } from "./auth-context"
 export interface Todo {
   id: string
   task: string
-  assignedTo: string
-  observation: string // <-- ADICIONADO AQUI
+  // assignedTo: string (Removido)
+  // observation: string (Removido)
   isDone: boolean
   userId: string
   createdAt: Date
@@ -29,12 +29,7 @@ export interface Todo {
 
 interface TodosContextType {
   todos: Todo[]
-  // Atualizado para incluir observation
-  addTodo: (
-    task: string,
-    assignedTo: string,
-    observation: string,
-  ) => Promise<void>
+  addTodo: (task: string) => Promise<void>
   updateTodo: (id: string, updates: Partial<Todo>) => Promise<void>
   deleteTodo: (id: string) => Promise<void>
   toggleTodoDone: (id: string) => Promise<void>
@@ -68,7 +63,6 @@ export function TodosProvider({ children }: { children: React.ReactNode }) {
           return {
             id: doc.id,
             ...data,
-            observation: data.observation || "", // Garantir que o campo exista
             createdAt: (data.createdAt as Timestamp).toDate(),
           } as Todo
         })
@@ -88,18 +82,11 @@ export function TodosProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
-  // Atualizado para incluir observation
-  const addTodo = async (
-    task: string,
-    assignedTo: string,
-    observation: string,
-  ) => {
+  const addTodo = async (task: string) => {
     if (!user) return
 
     const newTodoData = {
       task,
-      assignedTo,
-      observation: observation || "", // <-- ADICIONADO AQUI
       isDone: false,
       userId: user.id,
       createdAt: Timestamp.now(),

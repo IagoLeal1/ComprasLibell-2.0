@@ -17,24 +17,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
 import { useTodos } from "@/contexts/todos-context"
-import {
-  Plus,
-  LogOut,
-  Trash2,
-  ShoppingCart,
-  Package,
-  CheckSquare,
-} from "lucide-react"
-import Image from "next/image"
-import Link from "next/link"
+import { Plus, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Header } from "@/components/header"
 
 export default function AfazeresPage() {
   const [taskInput, setTaskInput] = useState("")
-  const [assignedToInput, setAssignedToInput] = useState("")
-  const [observationInput, setObservationInput] = useState("") // <-- NOVO ESTADO
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const { todos, addTodo, deleteTodo, toggleTodoDone, isLoading } = useTodos()
   const { toast } = useToast()
 
@@ -49,22 +38,18 @@ export default function AfazeresPage() {
 
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Verificação de observação é opcional, então não incluí
-    if (!taskInput.trim() || !assignedToInput.trim()) {
+    if (!taskInput.trim()) {
       toast({
         title: "Erro",
-        description: "Preencha a tarefa e o nome do responsável",
+        description: "Preencha a descrição da tarefa",
         variant: "destructive",
       })
       return
     }
 
     if (user) {
-      // Passando a observação
-      await addTodo(taskInput, assignedToInput, observationInput)
+      await addTodo(taskInput)
       setTaskInput("")
-      setAssignedToInput("")
-      setObservationInput("") // <-- Limpar input
       toast({
         title: "Sucesso",
         description: "Tarefa adicionada com sucesso",
@@ -105,27 +90,12 @@ export default function AfazeresPage() {
             </CardHeader>
 
             <CardContent className="p-6">
-              {/* Layout do formulário atualizado para 2 linhas */}
               <form onSubmit={handleAddTodo} className="space-y-4 mb-8">
                 <div className="flex gap-3">
                   <Input
                     placeholder="Descreva a nova tarefa..."
                     value={taskInput}
                     onChange={(e) => setTaskInput(e.target.value)}
-                    className="flex-1 focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20"
-                  />
-                  <Input
-                    placeholder="Nome do responsável..."
-                    value={assignedToInput}
-                    onChange={(e) => setAssignedToInput(e.target.value)}
-                    className="w-48 focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <Input
-                    placeholder="Observação (opcional)..."
-                    value={observationInput}
-                    onChange={(e) => setObservationInput(e.target.value)}
                     className="flex-1 focus:ring-libelle-teal focus:border-libelle-teal border-libelle-teal/20"
                   />
                   <Button
@@ -138,7 +108,6 @@ export default function AfazeresPage() {
                 </div>
               </form>
 
-              {/* Tabela Atualizada */}
               <div className="border border-libelle-teal/20 rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader className="bg-libelle-teal/5">
@@ -148,13 +117,6 @@ export default function AfazeresPage() {
                       </TableHead>
                       <TableHead className="text-libelle-dark-blue font-semibold">
                         Tarefa
-                      </TableHead>
-                      <TableHead className="text-libelle-dark-blue font-semibold">
-                        Responsável
-                      </TableHead>
-                      {/* NOVA COLUNA */}
-                      <TableHead className="text-libelle-dark-blue font-semibold">
-                        Observação
                       </TableHead>
                       <TableHead className="text-libelle-dark-blue font-semibold">
                         Data
@@ -168,7 +130,7 @@ export default function AfazeresPage() {
                     {isLoading ? (
                       <TableRow>
                         <TableCell
-                          colSpan={6} // <-- ColSpan atualizado
+                          colSpan={4}
                           className="text-center py-8 text-muted-foreground"
                         >
                           Carregando afazeres...
@@ -177,7 +139,7 @@ export default function AfazeresPage() {
                     ) : sortedTodos.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={6} // <-- ColSpan atualizado
+                          colSpan={4}
                           className="text-center py-8 text-muted-foreground"
                         >
                           Nenhuma tarefa adicionada ainda
@@ -204,25 +166,6 @@ export default function AfazeresPage() {
                             }`}
                           >
                             {todo.task}
-                          </TableCell>
-                          <TableCell
-                            className={`${
-                              todo.isDone
-                                ? "line-through text-muted-foreground"
-                                : "text-libelle-teal"
-                            }`}
-                          >
-                            {todo.assignedTo}
-                          </TableCell>
-                          {/* NOVA CÉLULA */}
-                          <TableCell
-                            className={`text-sm ${
-                              todo.isDone
-                                ? "line-through text-muted-foreground"
-                                : "text-gray-600"
-                            }`}
-                          >
-                            {todo.observation || "-"}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {formatDate(todo.createdAt)}

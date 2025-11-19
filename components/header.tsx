@@ -18,10 +18,11 @@ import {
   CheckSquare,
   Users,
   List,
-  ClipboardList, // <-- 1. Importar o novo ícone
+  ClipboardList,
+  LayoutDashboard, // <-- 1. Novo ícone
 } from "lucide-react"
 
-// Links de navegação (com ícones corrigidos)
+// Links de navegação
 const navLinks = [
   {
     href: "/dashboard",
@@ -31,7 +32,7 @@ const navLinks = [
   {
     href: "/comprados",
     label: "Comprados",
-    icon: CheckSquare, // Mantido para "Comprados"
+    icon: CheckSquare,
   },
   {
     href: "/estoque",
@@ -41,7 +42,12 @@ const navLinks = [
   {
     href: "/suprimentos",
     label: "Suprimentos",
-    icon: ClipboardList, // <-- 2. Ícone atualizado aqui
+    icon: ClipboardList,
+  },
+  {
+    href: "/salas", // <-- 2. Nova rota
+    label: "Salas",
+    icon: LayoutDashboard,
   },
   {
     href: "/afazeres",
@@ -62,7 +68,7 @@ interface HeaderProps {
 
 export function Header({ title, subtitle }: HeaderProps) {
   const { user, logout } = useAuth()
-  const pathname = usePathname() // Hook para saber a página atual
+  const pathname = usePathname()
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -80,7 +86,7 @@ export function Header({ title, subtitle }: HeaderProps) {
                   className="object-contain"
                 />
               </div>
-              <div>
+              <div className="hidden md:block"> {/* Esconde textos em mobile para caber todos os botões */}
                 <h1 className="text-xl font-bold text-libelle-dark-blue">
                   {title}
                 </h1>
@@ -89,10 +95,8 @@ export function Header({ title, subtitle }: HeaderProps) {
             </div>
 
             {/* Lado Direito: Navegação e Sair */}
-            <div className="flex items-center gap-1">
-              {" "}
-              {/* Gap menor */}
-              {/* Mapeia os links de navegação */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar"> {/* Scroll horizontal em telas muito pequenas */}
+              
               {navLinks.map((link) => (
                 <Tooltip key={link.href}>
                   <TooltipTrigger asChild>
@@ -101,10 +105,9 @@ export function Header({ title, subtitle }: HeaderProps) {
                         variant={pathname === link.href ? "default" : "outline"}
                         size="icon"
                         className={
-                          // Se o botão NÃO estiver ativo, aplica as classes de outline
                           pathname !== link.href
                             ? "border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white"
-                            : "" // Se estiver ativo, usa apenas as classes do variant="default"
+                            : "bg-libelle-teal hover:bg-libelle-teal/90"
                         }
                         aria-label={link.label}
                       >
@@ -122,12 +125,12 @@ export function Header({ title, subtitle }: HeaderProps) {
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
-                    size="sm" // Botão menor
+                    size="sm"
                     onClick={logout}
-                    className="border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white ml-2" // Margem para separar
+                    className="border-libelle-teal/30 text-libelle-teal hover:bg-libelle-teal hover:text-white ml-2"
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sair
+                    <LogOut className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Sair</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
